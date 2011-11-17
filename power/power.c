@@ -27,7 +27,9 @@
 #include <sys/types.h>
 #include <pthread.h>
 
-#define LOG_TAG "power"
+#define LOG_TAG "power-legacy"
+#define LOG_NDEBUG 0
+#define POWER_SIM			
 #include <utils/Log.h>
 
 #include "qemu.h"
@@ -106,6 +108,7 @@ initialize_fds(void)
     }
 }
 
+#ifndef POWER_SIM
 int
 acquire_wake_lock(int lock, const char* id)
 {
@@ -164,7 +167,7 @@ set_screen_state(int on)
 {
     QEMU_FALLBACK(set_screen_state(on));
 
-    LOGI("*** set_screen_state %d", on);
+    //LOGI("*** set_screen_state %d", on);
 
     initialize_fds();
 
@@ -189,3 +192,34 @@ set_screen_state(int on)
     }
     return 0;
 }
+#else
+
+int
+acquire_wake_lock(int lock, const char* id)
+{
+	//LOGI("acquire_wake_lock lock=%d id='%s'\n", lock, id);
+	return 0;
+}
+
+int
+release_wake_lock(const char* id)
+{
+	//LOGI("release_wake_lock id='%s'\n", id);
+	return 0;
+}
+
+int
+set_last_user_activity_timeout(int64_t delay)
+{
+	//LOGI("set_last_user_activity_timeout delay=%d\n", ((int)(delay)));
+	return 0;
+}
+
+int
+set_screen_state(int on)
+{
+	//LOGI("*** set_screen_state %d", on);
+	return 0;
+}
+
+#endif
