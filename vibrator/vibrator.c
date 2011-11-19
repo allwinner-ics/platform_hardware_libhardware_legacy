@@ -21,7 +21,8 @@
 #include <fcntl.h>
 #include <errno.h>
 
-#define THE_DEVICE "/sys/class/timed_output/vibrator/enable"
+#define THE_DEVICE "/sys/class/timed_output/sun4i-vibrator/enable"
+
 
 int vibrator_exists()
 {
