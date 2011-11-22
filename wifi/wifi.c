@@ -53,13 +53,99 @@ static char iface[PROPERTY_VALUE_MAX];
 // TODO: use new ANDROID_SOCKET mechanism, once support for multiple
 // sockets is in
 
+
+#if defined APM6xxx_SDIO_WIFI_USED
+
+    #ifndef WIFI_DRIVER_MODULE_PATH
+    #define WIFI_DRIVER_MODULE_PATH         "/drv/unifi_sdio.ko"
+    #endif
+    #ifndef WIFI_DRIVER_MODULE_NAME
+    #define WIFI_DRIVER_MODULE_NAME         "unifi_sdio"
+    #endif
+    #ifndef WIFI_DRIVER_MODULE_ARG
+    #define WIFI_DRIVER_MODULE_ARG          ""
+    #endif
+    
+#elif defined AR6302_SDIO_WIFI_USED
+
+    #ifndef WIFI_DRIVER_MODULE_PATH
+    #define WIFI_DRIVER_MODULE_PATH         "/drv/ar6000.ko"
+    #endif
+    #ifndef WIFI_DRIVER_MODULE_NAME
+    #define WIFI_DRIVER_MODULE_NAME         "ar6000"
+    #endif
+    #ifndef WIFI_DRIVER_MODULE_ARG
+    #define WIFI_DRIVER_MODULE_ARG         "fwpath=/drv"
+    #endif
+    
+#elif defined USI_BCM4329_SDIO_WIFI_USED
+
+    #ifndef WIFI_DRIVER_MODULE_PATH
+    #define WIFI_DRIVER_MODULE_PATH         "/drv/usi4329_dhd.ko"
+    #endif
+    #ifndef WIFI_DRIVER_MODULE_NAME
+    #define WIFI_DRIVER_MODULE_NAME         "dhd"
+    #endif
+    #ifndef WIFI_DRIVER_MODULE_ARG
+    #define WIFI_DRIVER_MODULE_ARG         "firmware_path=/drv/usi4329_fw.bin nvram_path=/drv/usi4329_nvram.txt"
+    #endif
+    
+#elif defined SWBB23_SDIO_WIFI_USED
+
+    #ifndef WIFI_DRIVER_MODULE_PATH
+    #define WIFI_DRIVER_MODULE_PATH         "/drv/swbb23_dhd.ko"
+    #endif
+    #ifndef WIFI_DRIVER_MODULE_NAME
+    #define WIFI_DRIVER_MODULE_NAME         "dhd"
+    #endif
+    #ifndef WIFI_DRIVER_MODULE_ARG
+    #define WIFI_DRIVER_MODULE_ARG         "firmware_path=/drv/swbb23_fw.bin nvram_path=/drv/swbb23_nvram.txt"
+    #endif
+    
+#elif defined NANO_SDIO_WIFI_USED 
+
+    /* nano sdio wifi */
+    #ifndef WIFI_DRIVER_MODULE_PATH
+    #define WIFI_DRIVER_MODULE_PATH         "/drv/nano_ksdio.ko"
+    #endif
+    #ifndef WIFI_DRIVER_MODULE_NAME
+    #define WIFI_DRIVER_MODULE_NAME         "nano_ksdio"
+    #endif
+
+
+    #ifndef WIFI_FIRMWARE_MODULE_PATH
+    #define WIFI_FIRMWARE_MODULE_PATH         "/drv/nano_if.ko"
+    #endif
+    #ifndef WIFI_FIRMWARE_MODULE_NAME
+    #define WIFI_FIRMWARE_MODULE_NAME         "nano_if"
+    #endif
+    #ifndef WIFI_FIRMWARE_MODULE_ARG
+    #define WIFI_FIRMWARE_MODULE_ARG          "nrx_config=/drv"
+    #endif
+
+static const char FIRMWARE_MODULE_NAME[]  = WIFI_FIRMWARE_MODULE_NAME;
+static const char FIRMWARE_MODULE_PATH[]  = WIFI_FIRMWARE_MODULE_PATH;
+static const char FIRMWARE_MODULE_ARG[]   = WIFI_FIRMWARE_MODULE_ARG;
+    
+#elif defined RTL_USB_WIFI_USED
+    /* rtl8192cu usb wifi */
+    #ifndef WIFI_DRIVER_MODULE_PATH
+    #define WIFI_DRIVER_MODULE_PATH         "/drv/8192cu.ko"
+    #endif
+    #ifndef WIFI_DRIVER_MODULE_NAME
+    #define WIFI_DRIVER_MODULE_NAME         "8192cu"
+    #endif
+
+#endif
+
+
 #ifndef WIFI_DRIVER_MODULE_ARG
 #define WIFI_DRIVER_MODULE_ARG          ""
 #endif
 #ifndef WIFI_FIRMWARE_LOADER
 #define WIFI_FIRMWARE_LOADER		""
 #endif
-#define WIFI_TEST_INTERFACE		"sta"
+#define WIFI_TEST_INTERFACE		"wlan0" //"sta" --> "wlan0"
 
 #ifndef WIFI_DRIVER_FW_PATH_STA
 #define WIFI_DRIVER_FW_PATH_STA		NULL
@@ -195,11 +281,162 @@ int is_wifi_driver_loaded() {
 #endif
 }
 
+#define TIME_COUNT 20 // 200ms*20 = 4 seconds for completion
+#if defined RTL_USB_WIFI_USED
+int wifi_load_driver()
+{
+    char driver_status[PROPERTY_VALUE_MAX];
+    int  count = 0;
+    char supp_status[PROPERTY_VALUE_MAX] = {'\0'};
+   
+    unsigned char tmp_buf[200] = {0};
+    char *p_strstr  = NULL;
+    int  ret        = 0;
+    FILE *fp        = NULL;
+
+    if (property_get(SUPP_PROP_NAME, supp_status, NULL)
+            && strcmp(supp_status, "stopping") == 0) {
+        LOGD("supplicant status is stopping, try to stop supplicant...");    	
+        wifi_stop_supplicant();// wifi on/off test will lead to unblocking problem
+        property_get(SUPP_PROP_NAME, supp_status, NULL);
+        LOGD("supplicant status = %s", supp_status);    	
+    } 
+    
+    LOGD("start to isnmod rtl8192cu.ko\n");
+    
+    if (insmod(DRIVER_MODULE_PATH, DRIVER_MODULE_ARG) < 0) {
+        LOGE("insmod rtl8192cu ko failed!");
+        rmmod(DRIVER_MODULE_NAME);//it may be load driver already,try remove it.
+        return -1;
+    }    
+
+    do{
+       fp=fopen("/proc/net/wireless", "r");
+       if (!fp) {
+           LOGE("failed to fopen file: /proc/net/wireless\n");
+           return -1;
+       }
+       ret = fread(tmp_buf, 200, 1, fp);
+       if (ret==0){
+           LOGD("faied to read proc/net/wireless");
+       }
+       fclose(fp);
+
+       LOGD("insmod wifi driver...");
+       p_strstr = strstr(tmp_buf, "wlan0");
+       if (p_strstr != NULL) {
+           break;
+       }
+       usleep(200000);// 200ms
+
+   } while (count++ <= TIME_COUNT); 
+
+   if(count > TIME_COUNT) {
+       LOGE("timeout, register netdevice wlan0 failed.");
+       rmmod(DRIVER_MODULE_NAME); 
+       return -1;
+   }
+   return 0;
+}
+#elif defined NANO_SDIO_WIFI_USED
+int wifi_load_driver()
+{
+    char driver_status[PROPERTY_VALUE_MAX];
+    char supp_status[PROPERTY_VALUE_MAX] = {'\0'};
+    int count = 100; /* wait at most 20 seconds for completion */
+
+    if (is_wifi_driver_loaded()) {
+        return 0;
+    }
+    
+    if (property_get(SUPP_PROP_NAME, supp_status, NULL)
+            && strcmp(supp_status, "stopping") == 0) {
+        LOGD("supplicant status is stopping, try to stop supplicant...");    	
+        wifi_stop_supplicant();// wifi on/off test will lead to unblocking problem
+        property_get(SUPP_PROP_NAME, supp_status, NULL);
+        LOGD("supplicant status = %s", supp_status);    	
+    }     
+
+    LOGD("begin insmod nano wifi fw.");
+    
+    if(insmod(FIRMWARE_MODULE_PATH, FIRMWARE_MODULE_ARG) < 0) {
+        LOGE("insmod nano wifi fw failed!");
+        rmmod(DRIVER_MODULE_NAME);
+        rmmod(FIRMWARE_MODULE_NAME);
+        return -1;
+    }
+
+    if (insmod(DRIVER_MODULE_PATH, DRIVER_MODULE_ARG) < 0){
+        LOGE("insmod wifi ko failed!");
+        rmmod(FIRMWARE_MODULE_NAME);          	
+        return -1;
+    }
+
+    if (strcmp(FIRMWARE_LOADER,"") == 0) {    	
+		char tmp_buf[200] = {0};  	
+		FILE *profs_entry = NULL;
+		int try_time = 0;	
+		do {		
+			profs_entry = fopen("/proc/net/wireless", "r");
+			if(profs_entry == NULL){
+				LOGE("open /proc/net/wireless failed!");
+				property_set(DRIVER_PROP_NAME, "failed");
+				break;
+		    }
+		    
+	        if( 0 == fread(tmp_buf, 200, 1, profs_entry) ){
+	            LOGD("faied to read proc/net/wireless");
+	        }
+			
+			if(NULL != strstr(tmp_buf, "wlan0")) {
+				LOGD("insmod okay,try_time(%d)", try_time);
+			    fclose(profs_entry);
+			    profs_entry = NULL;
+			    property_set(DRIVER_PROP_NAME, "ok");
+			    break;			    
+			}else {
+				LOGD("nano initial,try_time(%d)",try_time);
+				property_set(DRIVER_PROP_NAME, "failed");				    		
+			}			
+	        fclose(profs_entry);
+	        profs_entry = NULL;				
+			usleep(200000);
+		}while(try_time++ <= TIME_COUNT);// 4 seconds		       
+    }
+    else {
+        property_set("ctl.start", FIRMWARE_LOADER);
+    }
+    sched_yield();
+    while (count-- > 0) {
+        if (property_get(DRIVER_PROP_NAME, driver_status, NULL)) {
+            if (strcmp(driver_status, "ok") == 0)
+                return 0;
+            else if (strcmp(DRIVER_PROP_NAME, "failed") == 0) {
+                wifi_unload_driver();
+                return -1;
+            }
+        }
+        usleep(200000);
+    }
+    property_set(DRIVER_PROP_NAME, "timeout");
+    wifi_unload_driver();
+    return -1;	
+}
+#else
 int wifi_load_driver()
 {
 #ifdef WIFI_DRIVER_MODULE_PATH
     char driver_status[PROPERTY_VALUE_MAX];
+    char supp_status[PROPERTY_VALUE_MAX] = {'\0'};
     int count = 100; /* wait at most 20 seconds for completion */
+
+    if (property_get(SUPP_PROP_NAME, supp_status, NULL)
+            && strcmp(supp_status, "stopping") == 0) {
+        LOGD("supplicant status is stopping, try to stop supplicant...");    	
+        wifi_stop_supplicant();// wifi on/off test will lead to unblocking problem
+        property_get(SUPP_PROP_NAME, supp_status, NULL);
+        LOGD("supplicant status = %s", supp_status);    	
+    } 
 
     if (is_wifi_driver_loaded()) {
         return 0;
@@ -235,12 +472,18 @@ int wifi_load_driver()
     return 0;
 #endif
 }
+#endif
 
 int wifi_unload_driver()
 {
+	LOGD("wifi unload driver.\n");
     usleep(200000); /* allow to finish interface down */
 #ifdef WIFI_DRIVER_MODULE_PATH
-    if (rmmod(DRIVER_MODULE_NAME) == 0) {
+    if (rmmod(DRIVER_MODULE_NAME) == 0 
+#ifdef     NANO_SDIO_WIFI_USED
+            && (rmmod(FIRMWARE_MODULE_NAME) == 0) 
+#endif
+        ) {    	
         int count = 20; /* wait at most 10 seconds for completion */
         while (count-- > 0) {
             if (!is_wifi_driver_loaded())
@@ -578,10 +821,13 @@ int wifi_stop_supplicant()
     return -1;
 }
 
+#define SUPPLICANT_TIMEOUT      3000000  // microseconds
+#define SUPPLICANT_TIMEOUT_STEP  100000  // microseconds
 int wifi_connect_to_supplicant()
 {
     char ifname[256];
     char supp_status[PROPERTY_VALUE_MAX] = {'\0'};
+    int  supplicant_timeout = SUPPLICANT_TIMEOUT;
 
     /* Make sure supplicant is running */
     if (!property_get(SUPP_PROP_NAME, supp_status, NULL)
@@ -597,8 +843,13 @@ int wifi_connect_to_supplicant()
     }
 
     ctrl_conn = wpa_ctrl_open(ifname);
+    while (ctrl_conn == NULL && supplicant_timeout > 0) {
+        usleep(SUPPLICANT_TIMEOUT_STEP);
+        supplicant_timeout -= SUPPLICANT_TIMEOUT_STEP;
+        ctrl_conn = wpa_ctrl_open(ifname);
+    }
     if (ctrl_conn == NULL) {
-        LOGE("Unable to open connection to supplicant on \"%s\": %s",
+        LOGE("1.Unable to open connection to supplicant on \"%s\": %s",
              ifname, strerror(errno));
         return -1;
     }
@@ -606,6 +857,8 @@ int wifi_connect_to_supplicant()
     if (monitor_conn == NULL) {
         wpa_ctrl_close(ctrl_conn);
         ctrl_conn = NULL;
+        LOGE("2. Unable to open connection to supplicant on \"%s\": %s",
+             ifname, strerror(errno));        
         return -1;
     }
     if (wpa_ctrl_attach(monitor_conn) != 0) {
@@ -765,6 +1018,7 @@ int wifi_command(const char *command, char *reply, size_t *reply_len)
 
 const char *wifi_get_fw_path(int fw_type)
 {
+	LOGD("Enter: %s function, fw_type=%d,", __func__, fw_type);
     switch (fw_type) {
     case WIFI_GET_FW_PATH_STA:
         return WIFI_DRIVER_FW_PATH_STA;
