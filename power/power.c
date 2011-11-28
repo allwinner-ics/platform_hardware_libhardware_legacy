@@ -29,7 +29,7 @@
 
 #define LOG_TAG "power-legacy"
 #define LOG_NDEBUG 0
-#define POWER_SIM			
+//#define POWER_SIM			
 #include <utils/Log.h>
 
 #include "qemu.h"
@@ -114,7 +114,7 @@ acquire_wake_lock(int lock, const char* id)
 {
     initialize_fds();
 
-//    LOGI("acquire_wake_lock lock=%d id='%s'\n", lock, id);
+    LOGI("acquire_wake_lock lock=%d id='%s'\n", lock, id);
 
     if (g_error) return g_error;
 
@@ -135,7 +135,7 @@ release_wake_lock(const char* id)
 {
     initialize_fds();
 
-//    LOGI("release_wake_lock id='%s'\n", id);
+    LOGI("release_wake_lock id='%s'\n", id);
 
     if (g_error) return g_error;
 
@@ -167,7 +167,7 @@ set_screen_state(int on)
 {
     QEMU_FALLBACK(set_screen_state(on));
 
-    //LOGI("*** set_screen_state %d", on);
+    LOGI("*** set_screen_state %d", on);
 
     initialize_fds();
 
