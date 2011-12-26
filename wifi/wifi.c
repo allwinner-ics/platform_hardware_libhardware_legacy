@@ -57,7 +57,7 @@ static char iface[PROPERTY_VALUE_MAX];
 #if defined APM6xxx_SDIO_WIFI_USED
 
     #ifndef WIFI_DRIVER_MODULE_PATH
-    #define WIFI_DRIVER_MODULE_PATH         "/drv/unifi_sdio.ko"
+    #define WIFI_DRIVER_MODULE_PATH         "/system/vendor/modules/unifi_sdio.ko"
     #endif
     #ifndef WIFI_DRIVER_MODULE_NAME
     #define WIFI_DRIVER_MODULE_NAME         "unifi_sdio"
@@ -69,44 +69,68 @@ static char iface[PROPERTY_VALUE_MAX];
 #elif defined AR6302_SDIO_WIFI_USED
 
     #ifndef WIFI_DRIVER_MODULE_PATH
-    #define WIFI_DRIVER_MODULE_PATH         "/drv/ar6000.ko"
+    #define WIFI_DRIVER_MODULE_PATH         "/system/vendor/modules/ar6302.ko"
     #endif
     #ifndef WIFI_DRIVER_MODULE_NAME
     #define WIFI_DRIVER_MODULE_NAME         "ar6000"
     #endif
     #ifndef WIFI_DRIVER_MODULE_ARG
-    #define WIFI_DRIVER_MODULE_ARG         "fwpath=/drv"
+    #define WIFI_DRIVER_MODULE_ARG         "fwpath=/system/vendor/modules"
     #endif
     
+#elif defined AR6003_SDIO_WIFI_USED
+
+    #ifndef WIFI_DRIVER_MODULE_PATH
+    #define WIFI_DRIVER_MODULE_PATH         "/system/vendor/modules/ar6003.ko"
+    #endif
+    #ifndef WIFI_DRIVER_MODULE_NAME
+    #define WIFI_DRIVER_MODULE_NAME         "ar6000"
+    #endif
+    #ifndef WIFI_DRIVER_MODULE_ARG
+    #define WIFI_DRIVER_MODULE_ARG         "fwpath=/system/vendor/modules"
+    #endif
+
 #elif defined USI_BCM4329_SDIO_WIFI_USED
 
     #ifndef WIFI_DRIVER_MODULE_PATH
-    #define WIFI_DRIVER_MODULE_PATH         "/drv/usi4329_dhd.ko"
+    #define WIFI_DRIVER_MODULE_PATH         "/system/vendor/modules/usi4329_dhd.ko"
     #endif
     #ifndef WIFI_DRIVER_MODULE_NAME
     #define WIFI_DRIVER_MODULE_NAME         "dhd"
     #endif
     #ifndef WIFI_DRIVER_MODULE_ARG
-    #define WIFI_DRIVER_MODULE_ARG         "firmware_path=/drv/usi4329_fw.bin nvram_path=/drv/usi4329_nvram.txt"
+    #define WIFI_DRIVER_MODULE_ARG         "firmware_path=/system/vendor/modules/usi4329_fw.bin nvram_path=/system/vendor/modules/usi4329_nvram.txt"
     #endif
     
+#elif defined HWMW269V2_SDIO_WIFI_USED
+
+    #ifndef WIFI_DRIVER_MODULE_PATH
+    #define WIFI_DRIVER_MODULE_PATH         "/system/vendor/modules/bcm4330.ko"
+    #endif
+    #ifndef WIFI_DRIVER_MODULE_NAME
+    #define WIFI_DRIVER_MODULE_NAME         "bcm4330"
+    #endif
+    #ifndef WIFI_DRIVER_MODULE_ARG
+    #define WIFI_DRIVER_MODULE_ARG         "firmware_path=/system/vendor/modules/bcm4330.bin nvram_path=/system/vendor/modules/bcm4330_nvram.txt"
+    #endif
+
 #elif defined SWBB23_SDIO_WIFI_USED
 
     #ifndef WIFI_DRIVER_MODULE_PATH
-    #define WIFI_DRIVER_MODULE_PATH         "/drv/swbb23_dhd.ko"
+    #define WIFI_DRIVER_MODULE_PATH         "/system/vendor/modules/swbb23_dhd.ko"
     #endif
     #ifndef WIFI_DRIVER_MODULE_NAME
     #define WIFI_DRIVER_MODULE_NAME         "dhd"
     #endif
     #ifndef WIFI_DRIVER_MODULE_ARG
-    #define WIFI_DRIVER_MODULE_ARG         "firmware_path=/drv/swbb23_fw.bin nvram_path=/drv/swbb23_nvram.txt"
+    #define WIFI_DRIVER_MODULE_ARG         "firmware_path=/system/vendor/modules/swbb23_fw.bin nvram_path=/system/vendor/modules/swbb23_nvram.txt"
     #endif
     
 #elif defined NANO_SDIO_WIFI_USED 
 
     /* nano sdio wifi */
     #ifndef WIFI_DRIVER_MODULE_PATH
-    #define WIFI_DRIVER_MODULE_PATH         "/drv/nano_ksdio.ko"
+    #define WIFI_DRIVER_MODULE_PATH         "/system/vendor/modules/nano_ksdio.ko"
     #endif
     #ifndef WIFI_DRIVER_MODULE_NAME
     #define WIFI_DRIVER_MODULE_NAME         "nano_ksdio"
@@ -114,13 +138,13 @@ static char iface[PROPERTY_VALUE_MAX];
 
 
     #ifndef WIFI_FIRMWARE_MODULE_PATH
-    #define WIFI_FIRMWARE_MODULE_PATH         "/drv/nano_if.ko"
+    #define WIFI_FIRMWARE_MODULE_PATH         "/system/vendor/modules/nano_if.ko"
     #endif
     #ifndef WIFI_FIRMWARE_MODULE_NAME
     #define WIFI_FIRMWARE_MODULE_NAME         "nano_if"
     #endif
     #ifndef WIFI_FIRMWARE_MODULE_ARG
-    #define WIFI_FIRMWARE_MODULE_ARG          "nrx_config=/drv"
+    #define WIFI_FIRMWARE_MODULE_ARG          "nrx_config=/system/vendor/modules"
     #endif
 
 static const char FIRMWARE_MODULE_NAME[]  = WIFI_FIRMWARE_MODULE_NAME;
@@ -130,7 +154,7 @@ static const char FIRMWARE_MODULE_ARG[]   = WIFI_FIRMWARE_MODULE_ARG;
 #elif defined RTL_USB_WIFI_USED
     /* rtl8192cu usb wifi */
     #ifndef WIFI_DRIVER_MODULE_PATH
-    #define WIFI_DRIVER_MODULE_PATH         "/drv/8192cu.ko"
+    #define WIFI_DRIVER_MODULE_PATH         "/system/vendor/modules/8192cu.ko"
     #endif
     #ifndef WIFI_DRIVER_MODULE_NAME
     #define WIFI_DRIVER_MODULE_NAME         "8192cu"
@@ -441,9 +465,12 @@ int wifi_load_driver()
     if (is_wifi_driver_loaded()) {
         return 0;
     }
-
-    if (insmod(DRIVER_MODULE_PATH, DRIVER_MODULE_ARG) < 0)
+    
+	LOGE("begin to insmod %s %s firmware!", DRIVER_MODULE_PATH, DRIVER_MODULE_ARG);
+    if (insmod(DRIVER_MODULE_PATH, DRIVER_MODULE_ARG) < 0) {
+        LOGE("insmod %s %s firmware failed!", DRIVER_MODULE_PATH, DRIVER_MODULE_ARG);
         return -1;
+    }
 
     if (strcmp(FIRMWARE_LOADER,"") == 0) {
         /* usleep(WIFI_DRIVER_LOADER_DELAY); */
