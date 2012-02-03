@@ -54,6 +54,16 @@ ifeq ($(SW_BOARD_USR_WIFI), hwmw269v2)
 LOCAL_CFLAGS += -DHWMW269V2_SDIO_WIFI_USED
 endif
 
+# huawei mw629v3 sdio wifi module
+ifeq ($(SW_BOARD_USR_WIFI), hwmw269v3)
+LOCAL_CFLAGS += -DHWMW269V3_SDIO_WIFI_USED
+endif
+
+# bcm40181 sdio wifi module
+ifeq ($(SW_BOARD_USR_WIFI), bcm40181)
+LOCAL_CFLAGS += -DBCM40181_SDIO_WIFI_USED
+endif
+
 # samsung b23 sdio wifi module
 ifeq ($(SW_BOARD_USR_WIFI), swbb23)
 LOCAL_CFLAGS += -DSWBB23_SDIO_WIFI_USED
@@ -67,6 +77,11 @@ endif
 # realtek usb wifi module
 ifeq ($(SW_BOARD_USR_WIFI), rtl8192cu)
 LOCAL_CFLAGS += -DRTL_USB_WIFI_USED
+endif
+
+# ralink usb wifi module
+ifeq ($(SW_BOARD_USR_WIFI), rt5370)
+LOCAL_CFLAGS += -DRAL_USB_WIFI_USED
 endif
 
 LOCAL_SRC_FILES += wifi/wifi.c

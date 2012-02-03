@@ -114,6 +114,30 @@ static char iface[PROPERTY_VALUE_MAX];
     #define WIFI_DRIVER_MODULE_ARG         "firmware_path=/system/vendor/modules/bcm4330.bin nvram_path=/system/vendor/modules/bcm4330_nvram.txt"
     #endif
 
+#elif defined HWMW269V3_SDIO_WIFI_USED
+
+    #ifndef WIFI_DRIVER_MODULE_PATH
+    #define WIFI_DRIVER_MODULE_PATH         "/system/vendor/modules/bcm4330.ko"
+    #endif
+    #ifndef WIFI_DRIVER_MODULE_NAME
+    #define WIFI_DRIVER_MODULE_NAME         "bcm4330"
+    #endif
+    #ifndef WIFI_DRIVER_MODULE_ARG
+    #define WIFI_DRIVER_MODULE_ARG         "firmware_path=/system/vendor/modules/mw269v3_fw.bin nvram_path=/system/vendor/modules/mw269v3_nvram.txt"
+    #endif
+    
+#elif defined BCM40181_SDIO_WIFI_USED
+
+    #ifndef WIFI_DRIVER_MODULE_PATH
+    #define WIFI_DRIVER_MODULE_PATH         "/system/vendor/modules/bcm40181_dhd.ko"
+    #endif
+    #ifndef WIFI_DRIVER_MODULE_NAME
+    #define WIFI_DRIVER_MODULE_NAME         "dhd"
+    #endif
+    #ifndef WIFI_DRIVER_MODULE_ARG
+    #define WIFI_DRIVER_MODULE_ARG         "firmware_path=/system/vendor/modules/bcm40181_fw.bin nvram_path=/system/vendor/modules/bcm40181_nvram.txt"
+    #endif
+
 #elif defined SWBB23_SDIO_WIFI_USED
 
     #ifndef WIFI_DRIVER_MODULE_PATH
@@ -160,8 +184,16 @@ static const char FIRMWARE_MODULE_ARG[]   = WIFI_FIRMWARE_MODULE_ARG;
     #define WIFI_DRIVER_MODULE_NAME         "8192cu"
     #endif
 
-#endif
+#elif defined RAL_USB_WIFI_USED
+    /* ralink 3070,5370,... usb wifi */
+    #ifndef WIFI_DRIVER_MODULE_PATH
+    #define WIFI_DRIVER_MODULE_PATH         "/system/vendor/modules/rt5370sta.ko"
+    #endif
+    #ifndef WIFI_DRIVER_MODULE_NAME
+    #define WIFI_DRIVER_MODULE_NAME         "rt5370sta"
+    #endif
 
+#endif
 
 #ifndef WIFI_DRIVER_MODULE_ARG
 #define WIFI_DRIVER_MODULE_ARG          ""
@@ -469,12 +501,40 @@ int wifi_load_driver()
 	LOGE("begin to insmod %s %s firmware!", DRIVER_MODULE_PATH, DRIVER_MODULE_ARG);
     if (insmod(DRIVER_MODULE_PATH, DRIVER_MODULE_ARG) < 0) {
         LOGE("insmod %s %s firmware failed!", DRIVER_MODULE_PATH, DRIVER_MODULE_ARG);
+        rmmod(DRIVER_MODULE_NAME);//it may be load driver already,try remove it.
         return -1;
     }
 
     if (strcmp(FIRMWARE_LOADER,"") == 0) {
-        /* usleep(WIFI_DRIVER_LOADER_DELAY); */
-        property_set(DRIVER_PROP_NAME, "ok");
+		char tmp_buf[200] = {0};  	
+		FILE *profs_entry = NULL;
+		int try_time = 0;	
+		do {		
+			profs_entry = fopen("/proc/net/wireless", "r");
+			if(profs_entry == NULL){
+				LOGE("open /proc/net/wireless failed!");
+				property_set(DRIVER_PROP_NAME, "failed");
+				break;
+		    }
+		    
+	        if( 0 == fread(tmp_buf, 200, 1, profs_entry) ){
+	            LOGD("faied to read proc/net/wireless");
+	        }
+			
+			if(NULL != strstr(tmp_buf, "wlan0")) {
+				LOGD("insmod okay,try_time(%d)", try_time);
+			    fclose(profs_entry);
+			    profs_entry = NULL;
+			    property_set(DRIVER_PROP_NAME, "ok");
+			    break;			    
+			}else {
+				LOGD("initial,try_time(%d)",try_time);
+				property_set(DRIVER_PROP_NAME, "failed");				    		
+			}			
+	        fclose(profs_entry);
+	        profs_entry = NULL;				
+			usleep(200000);
+		}while(try_time++ <= TIME_COUNT);// 4 seconds	
     }
     else {
         property_set("ctl.start", FIRMWARE_LOADER);
