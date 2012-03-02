@@ -183,7 +183,15 @@ static const char FIRMWARE_MODULE_ARG[]   = WIFI_FIRMWARE_MODULE_ARG;
     #ifndef WIFI_DRIVER_MODULE_NAME
     #define WIFI_DRIVER_MODULE_NAME         "8192cu"
     #endif
-
+#elif defined RTL_SDIO_WIFI_USED
+    /* rtl8723AS sdio+bt wifi */
+    #ifndef WIFI_DRIVER_MODULE_PATH
+    #define WIFI_DRIVER_MODULE_PATH         "/system/vendor/modules/8723as.ko"
+    #endif
+    #ifndef WIFI_DRIVER_MODULE_NAME
+    #define WIFI_DRIVER_MODULE_NAME         "8723as"
+    #endif
+    
 #elif defined RAL_USB_WIFI_USED
     /* ralink 3070,5370,... usb wifi */
     #ifndef WIFI_DRIVER_MODULE_PATH
@@ -211,6 +219,15 @@ static const char FIRMWARE_MODULE_ARG[]   = WIFI_FIRMWARE_MODULE_ARG;
 #endif
 #ifndef WIFI_DRIVER_FW_PATH_P2P
 #define WIFI_DRIVER_FW_PATH_P2P		NULL
+#endif
+
+#if defined(RTL_USB_WIFI_USED)
+#undef WIFI_DRIVER_FW_PATH_STA
+#define WIFI_DRIVER_FW_PATH_STA         "STA"
+#undef WIFI_DRIVER_FW_PATH_AP
+#define WIFI_DRIVER_FW_PATH_AP          "AP"
+#undef WIFI_DRIVER_FW_PATH_P2P
+#define WIFI_DRIVER_FW_PATH_P2P         "P2P"
 #endif
 
 #ifndef WIFI_DRIVER_FW_PATH_PARAM
@@ -338,7 +355,7 @@ int is_wifi_driver_loaded() {
 }
 
 #define TIME_COUNT 20 // 200ms*20 = 4 seconds for completion
-#if defined RTL_USB_WIFI_USED
+#if defined(RTL_USB_WIFI_USED) || defined(RTL_SDIO_WIFI_USED)
 int wifi_load_driver()
 {
     char driver_status[PROPERTY_VALUE_MAX];
@@ -358,10 +375,10 @@ int wifi_load_driver()
         LOGD("supplicant status = %s", supp_status);    	
     } 
     
-    LOGD("start to isnmod rtl8192cu.ko\n");
+    LOGD("start to isnmod %s.ko\n", WIFI_DRIVER_MODULE_NAME);
     
     if (insmod(DRIVER_MODULE_PATH, DRIVER_MODULE_ARG) < 0) {
-        LOGE("insmod rtl8192cu ko failed!");
+        LOGE("insmod %s ko failed!", WIFI_DRIVER_MODULE_NAME);
         rmmod(DRIVER_MODULE_NAME);//it may be load driver already,try remove it.
         return -1;
     }    
@@ -812,6 +829,9 @@ int wifi_start_supplicant_common(const char *config_file)
     unsigned serial = 0;
 #endif
 
+    wifi_stop_supplicant();
+    wifi_close_supplicant_connection();
+
     /* Check whether already running */
     if (property_get(SUPP_PROP_NAME, supp_status, NULL)
             && strcmp(supp_status, "running") == 0) {
@@ -1121,10 +1141,24 @@ int wifi_change_fw_path(const char *fwpath)
 {
     int len;
     int fd;
-    int ret = 0;
+    int ret = 0;    
+    static char previous_fwpath[4];
 
+#if defined(RTL_USB_WIFI_USED)
+
+    LOGE("%s: %s\n", __FUNCTION__, fwpath);
+    if(strncmp("P2P", fwpath, 3) == 0) {
+        ret = wifi_load_driver();
+    } else if(strncmp("P2P", previous_fwpath, 3) == 0) {
+        ret = wifi_unload_driver();
+    }
+
+    strncpy(previous_fwpath, fwpath, 3);
+
+#else
     if (!fwpath)
-        return ret;
+    	return ret;
+	
     fd = open(WIFI_DRIVER_FW_PATH_PARAM, O_WRONLY);
     if (fd < 0) {
         LOGE("Failed to open wlan fw path param (%s)", strerror(errno));
@@ -1136,5 +1170,6 @@ int wifi_change_fw_path(const char *fwpath)
         ret = -1;
     }
     close(fd);
+#endif
     return ret;
 }

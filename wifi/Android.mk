@@ -79,6 +79,11 @@ ifeq ($(SW_BOARD_USR_WIFI), rtl8192cu)
 LOCAL_CFLAGS += -DRTL_USB_WIFI_USED
 endif
 
+# realtek usb wifi module
+ifeq ($(SW_BOARD_USR_WIFI), rtl8723as)
+LOCAL_CFLAGS += -DRTL_SDIO_WIFI_USED
+endif
+
 # ralink usb wifi module
 ifeq ($(SW_BOARD_USR_WIFI), rt5370)
 LOCAL_CFLAGS += -DRAL_USB_WIFI_USED
