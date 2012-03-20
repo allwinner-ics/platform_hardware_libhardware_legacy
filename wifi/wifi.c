@@ -53,7 +53,6 @@ static char iface[PROPERTY_VALUE_MAX];
 // TODO: use new ANDROID_SOCKET mechanism, once support for multiple
 // sockets is in
 
-
 #if defined APM6xxx_SDIO_WIFI_USED
 
     #ifndef WIFI_DRIVER_MODULE_PATH
@@ -90,7 +89,7 @@ static char iface[PROPERTY_VALUE_MAX];
     #define WIFI_DRIVER_MODULE_ARG         "fwpath=/system/vendor/modules"
     #endif
 
-#elif defined USI_BCM4329_SDIO_WIFI_USED
+#elif defined USI_BM01A_SDIO_WIFI_USED
 
     #ifndef WIFI_DRIVER_MODULE_PATH
     #define WIFI_DRIVER_MODULE_PATH         "/system/vendor/modules/usi4329_dhd.ko"
@@ -136,6 +135,18 @@ static char iface[PROPERTY_VALUE_MAX];
     #endif
     #ifndef WIFI_DRIVER_MODULE_ARG
     #define WIFI_DRIVER_MODULE_ARG         "firmware_path=/system/vendor/modules/bcm40181_fw.bin nvram_path=/system/vendor/modules/bcm40181_nvram.txt"
+    #endif
+    
+#elif defined BCM40183_SDIO_WIFI_USED
+
+    #ifndef WIFI_DRIVER_MODULE_PATH
+    #define WIFI_DRIVER_MODULE_PATH         "/system/vendor/modules/bcm40183_dhd.ko"
+    #endif
+    #ifndef WIFI_DRIVER_MODULE_NAME
+    #define WIFI_DRIVER_MODULE_NAME         "dhd"
+    #endif
+    #ifndef WIFI_DRIVER_MODULE_ARG
+    #define WIFI_DRIVER_MODULE_ARG         "firmware_path=/system/vendor/modules/bcm40183_fw.bin nvram_path=/system/vendor/modules/bcm40183_nvram.txt"
     #endif
 
 #elif defined SWBB23_SDIO_WIFI_USED

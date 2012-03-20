@@ -45,8 +45,8 @@ LOCAL_CFLAGS += -DAR6003_SDIO_WIFI_USED
 endif
 
 # usi 4329 sdio wifi module
-ifeq ($(SW_BOARD_USR_WIFI), usibcm4329)
-LOCAL_CFLAGS += -DUSI_BCM4329_SDIO_WIFI_USED
+ifeq ($(SW_BOARD_USR_WIFI), usibm01a)
+LOCAL_CFLAGS += -DUSI_BM01A_SDIO_WIFI_USED
 endif
 
 # huawei mw629v2 sdio wifi module
@@ -62,6 +62,11 @@ endif
 # bcm40181 sdio wifi module
 ifeq ($(SW_BOARD_USR_WIFI), bcm40181)
 LOCAL_CFLAGS += -DBCM40181_SDIO_WIFI_USED
+endif
+
+# bcm40183 sdio wifi module
+ifeq ($(SW_BOARD_USR_WIFI), bcm40183)
+LOCAL_CFLAGS += -DBCM40183_SDIO_WIFI_USED
 endif
 
 # samsung b23 sdio wifi module
